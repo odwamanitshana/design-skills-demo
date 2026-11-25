@@ -35,10 +35,15 @@
       --btn-bg: var(--bg-elevated);
       --btn-good-bg: #e6f4ef;
       --nav-h: 4.25rem;
+      --nav-h-compact: 3.5rem;
+      --header-shadow: 0 0 0 transparent;
     }
 
     *, *::before, *::after { box-sizing: border-box; }
-    html { scroll-behavior: smooth; }
+    html {
+      scroll-behavior: smooth;
+      scroll-padding-top: var(--nav-h);
+    }
     @media (prefers-reduced-motion: reduce) {
       html { scroll-behavior: auto; }
       *, *::before, *::after {
@@ -70,6 +75,32 @@
     }
     .skip-link:focus { top: 1rem; }
 
+    /* modern-web-guidance: scroll-progress-indicator */
+    .scroll-progress {
+      position: fixed;
+      z-index: 60;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 3px;
+      transform-origin: 0 50%;
+      transform: scaleX(0);
+      background: linear-gradient(90deg, var(--accent), var(--brass));
+      pointer-events: none;
+    }
+    @media (prefers-reduced-motion: no-preference) {
+      @supports (animation-timeline: scroll()) {
+        @keyframes mwg-grow-progress {
+          from { transform: scaleX(0); }
+          to { transform: scaleX(1); }
+        }
+        .scroll-progress {
+          animation: mwg-grow-progress auto linear;
+          animation-timeline: scroll();
+        }
+      }
+    }
+
     /* scroll-3d-worlds: fixed WebGL layer */
     #world-canvas {
       position: fixed;
@@ -92,21 +123,44 @@
       z-index: 2;
     }
 
-    /* checklist-design-ux: navigation */
+    /* checklist-design-ux + modern-web-guidance: navbar / shrinking header */
     .site-header {
       position: sticky;
       top: 0;
       z-index: 50;
-      height: var(--nav-h);
       display: flex;
       align-items: center;
+      min-height: var(--nav-h);
       border-bottom: 1px solid rgb(212 205 194 / 0.65);
-      background: rgb(250 247 242 / 0.82);
-      backdrop-filter: blur(12px);
+      background: rgb(250 247 242 / 0.92);
+      box-shadow: var(--header-shadow);
+    }
+    @supports (backdrop-filter: blur(12px)) {
+      .site-header { backdrop-filter: blur(12px); background: rgb(250 247 242 / 0.82); }
+    }
+    .site-header.is-scrolled {
+      box-shadow: 0 10px 28px rgb(20 32 28 / 0.1);
+      min-height: var(--nav-h-compact);
+    }
+    @media (prefers-reduced-motion: no-preference) {
+      @supports ((animation-timeline: scroll()) and (animation-range: 0% 100%)) {
+        @keyframes mwg-header-compact {
+          to {
+            min-height: var(--nav-h-compact);
+            --header-shadow: 0 10px 28px rgb(20 32 28 / 0.1);
+          }
+        }
+        .site-header {
+          animation: mwg-header-compact auto linear forwards;
+          animation-timeline: scroll(block root);
+          animation-range: 0 140px;
+        }
+      }
     }
     .site-header__inner {
       width: min(1120px, 100% - 2rem);
       margin-inline: auto;
+      padding-block: 0.65rem;
       display: flex;
       align-items: center;
       gap: 1.5rem;
@@ -119,6 +173,7 @@
       color: var(--ink);
       text-decoration: none;
       white-space: nowrap;
+      transition: transform 0.2s ease;
     }
     .logo span { color: var(--accent-bright); }
 
@@ -129,15 +184,24 @@
       padding: 0;
       gap: 1.75rem;
       flex: 1;
+      scroll-target-group: auto;
     }
     .nav-main a {
       color: var(--ink-muted);
       text-decoration: none;
       font-weight: 500;
       font-size: 0.9375rem;
+      border-bottom: 2px solid transparent;
+      padding-bottom: 0.15rem;
     }
-    .nav-main a:hover, .nav-main a[aria-current="page"] {
+    .nav-main a:hover {
       color: var(--ink);
+    }
+    .nav-main a:is(:target-current, .target-current),
+    .nav-main a[aria-current="true"] {
+      color: var(--accent);
+      border-bottom-color: var(--brass);
+      font-weight: 600;
     }
     .header-actions {
       margin-left: auto;
@@ -160,29 +224,56 @@
     .nav-toggle svg { width: 1.25rem; height: 1.25rem; }
     .nav-toggle[aria-expanded="true"] { border-color: var(--accent); }
 
-    .mobile-drawer {
-      display: none;
-      position: fixed;
-      inset: var(--nav-h) 0 0 0;
-      z-index: 45;
-      background: var(--bg-elevated);
-      padding: 1.5rem;
-      border-top: 1px solid var(--line);
+    /* modern-web-guidance: navigation-drawer (<dialog>) */
+    .nav-drawer {
+      margin: 0;
+      padding: 0;
+      border: none;
+      max-width: none;
+      max-height: none;
+      width: 100%;
+      height: 100%;
+      background: transparent;
     }
-    .mobile-drawer.is-open { display: block; }
-    .mobile-drawer ul {
+    .nav-drawer::backdrop {
+      background: rgb(20 32 28 / 0.45);
+    }
+  .nav-drawer__sheet {
+      margin: 0;
+      margin-inline-start: auto;
+      width: min(20rem, 88vw);
+      height: 100%;
+      padding: 1.5rem 1.25rem;
+      background: var(--bg-elevated);
+      border-inline-start: 1px solid var(--line);
+      box-shadow: -12px 0 40px rgb(20 32 28 / 0.12);
+    }
+    .nav-drawer__head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 1.25rem;
+    }
+    .nav-drawer__head h2 {
+      margin: 0;
+      font-family: var(--font-display);
+      font-size: 1.1rem;
+    }
+    .nav-drawer ul {
       list-style: none;
       margin: 0;
       padding: 0;
       display: flex;
       flex-direction: column;
-      gap: 1rem;
+      gap: 0.75rem;
     }
-    .mobile-drawer a {
-      font-size: 1.125rem;
+    .nav-drawer a {
+      display: block;
+      font-size: 1.0625rem;
       font-weight: 600;
       color: var(--ink);
       text-decoration: none;
+      padding: 0.5rem 0;
     }
 
     @media (min-width: 768px) {
@@ -297,6 +388,25 @@
       display: flex;
       align-items: center;
       padding: clamp(2rem, 6vw, 4rem) 0;
+    }
+    .chapter[data-defer] {
+      content-visibility: auto;
+      contain-intrinsic-size: auto 100vh;
+    }
+    @media (prefers-reduced-motion: no-preference) {
+      @supports ((animation-timeline: view()) and (animation-range: entry)) {
+        @keyframes mwg-reveal-in {
+          from {
+            opacity: 0;
+            translate: 0 1.25rem;
+          }
+        }
+        .reveal {
+          animation: mwg-reveal-in auto linear both;
+          animation-timeline: view();
+          animation-range: entry 0% entry 100%;
+        }
+      }
     }
     .chapter__inner {
       width: min(1120px, 100% - 2rem);
@@ -415,8 +525,13 @@
       padding: 1.75rem;
       border-radius: var(--radius);
       border: 1px solid rgb(212 205 194 / 0.9);
-      background: rgb(250 247 242 / 0.72);
-      backdrop-filter: blur(10px);
+      background: rgb(250 247 242 / 0.88);
+    }
+    @supports (backdrop-filter: blur(10px)) {
+      .glass-panel {
+        background: rgb(250 247 242 / 0.72);
+        backdrop-filter: blur(10px);
+      }
     }
 
     /* checklist-design-ux: form */
@@ -503,6 +618,7 @@
 </head>
 <body>
   <a class="skip-link" href="#main">Skip to content</a>
+  <div class="scroll-progress" id="scroll-progress" aria-hidden="true"></div>
 
   <canvas id="world-canvas" aria-hidden="true"></canvas>
   <div class="world-vignette" aria-hidden="true"></div>
@@ -519,7 +635,7 @@
       <div class="site-header__inner">
         <a class="logo" href="#">Hearthstone <span>Capital</span></a>
         <ul class="nav-main" role="list">
-          <li><a href="#chapter-0" aria-current="page">Approach</a></li>
+          <li><a href="#chapter-0">Approach</a></li>
           <li><a href="#chapter-1">Portfolio</a></li>
           <li><a href="#chapter-2">Returns</a></li>
           <li><a href="#chapter-3">Invest</a></li>
@@ -527,24 +643,30 @@
         <div class="header-actions">
           <button type="button" class="btn btn--ghost" id="btn-brochure">Download brochure</button>
           <button type="button" class="btn btn--primary" id="btn-header-cta">Book a call</button>
-          <button type="button" class="nav-toggle" id="nav-toggle" aria-expanded="false" aria-controls="mobile-nav" aria-label="Open menu">
+          <button type="button" class="nav-toggle" id="nav-toggle" aria-expanded="false" aria-controls="nav-drawer" aria-label="Open menu" aria-haspopup="dialog">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
           </button>
         </div>
       </div>
     </header>
 
-    <nav id="mobile-nav" class="mobile-drawer" aria-label="Mobile navigation" hidden>
-      <ul role="list">
-        <li><a href="#chapter-0">Approach</a></li>
-        <li><a href="#chapter-1">Portfolio</a></li>
-        <li><a href="#chapter-2">Returns</a></li>
-        <li><a href="#chapter-3">Invest</a></li>
-      </ul>
-    </nav>
+    <dialog class="nav-drawer" id="nav-drawer" aria-label="Navigation menu">
+      <div class="nav-drawer__sheet">
+        <div class="nav-drawer__head">
+          <h2>Menu</h2>
+          <button type="button" class="btn btn--ghost" id="nav-drawer-close" autofocus>Close</button>
+        </div>
+        <ul role="list">
+          <li><a href="#chapter-0">Approach</a></li>
+          <li><a href="#chapter-1">Portfolio</a></li>
+          <li><a href="#chapter-2">Returns</a></li>
+          <li><a href="#chapter-3">Invest</a></li>
+        </ul>
+      </div>
+    </dialog>
 
     <main id="main">
-      <section class="chapter" id="chapter-0" data-cam="0">
+      <section class="chapter" id="chapter-0" data-cam="0" tabindex="-1">
         <div class="chapter__inner">
           <div>
             <span class="demo-badge">Skills demo — property template</span>
@@ -569,8 +691,8 @@
         </div>
       </section>
 
-      <section class="chapter chapter--flip" id="chapter-1" data-cam="1">
-        <div class="chapter__inner">
+      <section class="chapter chapter--flip" id="chapter-1" data-cam="1" data-defer tabindex="-1">
+        <div class="chapter__inner reveal">
           <div class="glass-panel">
             <p class="eyebrow">Chapter 02 · Portfolio</p>
             <h2>Four assets, one disciplined mandate</h2>
@@ -593,8 +715,8 @@
         </div>
       </section>
 
-      <section class="chapter" id="chapter-2" data-cam="2">
-        <div class="chapter__inner">
+      <section class="chapter" id="chapter-2" data-cam="2" data-defer tabindex="-1">
+        <div class="chapter__inner reveal">
           <div>
             <p class="eyebrow">Chapter 03 · Returns</p>
             <h2>Transparent fees, no performance theatre</h2>
@@ -624,7 +746,7 @@
         </div>
       </section>
 
-      <section class="chapter" id="chapter-3" data-cam="3">
+      <section class="chapter" id="chapter-3" data-cam="3" data-defer tabindex="-1">
         <div class="chapter__inner">
           <div>
             <p class="eyebrow">Chapter 04 · Apply</p>
@@ -651,8 +773,8 @@
 
     <footer class="site-footer">
       <div class="site-footer__inner">
-        <p>Demo only — not financial advice. Illustrates your four design skills.</p>
-        <p>Open this file locally: <code>property-investment-skills-demo.html</code></p>
+        <p>Demo only — not financial advice. Illustrates your four design skills + modern-web-guidance.</p>
+        <p>Live: <code>odwamanitshana.github.io/design-skills-demo/</code></p>
       </div>
     </footer>
   </div>
@@ -728,6 +850,8 @@
 
     let smoothProgress = 0;
     let lastT = performance.now();
+    let worldActive = !reduceMotion && !document.hidden;
+    let rafId = 0;
 
     function progressFromScroll() {
       const docH = document.documentElement.scrollHeight - innerHeight;
@@ -768,24 +892,41 @@
     function tick(now) {
       const dt = Math.min(0.05, (now - lastT) / 1000);
       lastT = now;
-      const target = progressFromScroll();
-      smoothProgress = reduceMotion
-        ? target
-        : smoothProgress + (target - smoothProgress) * Math.min(1, dt * 5.2);
-      const seg = Math.floor(smoothProgress);
-      const t = smoothProgress - seg;
-      applyCamera(smoothProgress, t);
-      updateRail(smoothProgress);
-      buildings.forEach((b, i) => {
-        b.position.y = (b.geometry.parameters.height / 2) + Math.sin(now * 0.001 + i) * 0.02;
-      });
-      renderer.render(scene, camera);
-      requestAnimationFrame(tick);
+      if (worldActive) {
+        const target = progressFromScroll();
+        smoothProgress = reduceMotion
+          ? target
+          : smoothProgress + (target - smoothProgress) * Math.min(1, dt * 5.2);
+        const seg = Math.floor(smoothProgress);
+        const t = smoothProgress - seg;
+        applyCamera(smoothProgress, t);
+        updateRail(smoothProgress);
+        buildings.forEach((b, i) => {
+          b.position.y = (b.geometry.parameters.height / 2) + Math.sin(now * 0.001 + i) * 0.02;
+        });
+        renderer.render(scene, camera);
+      }
+      rafId = requestAnimationFrame(tick);
+    }
+
+    function setWorldActive(next) {
+      worldActive = next && !reduceMotion;
     }
 
     addEventListener("resize", resize);
+    function updateWorldFromLayout() {
+      const anyChapterVisible = sectionEls.some((s) => {
+        const r = s.getBoundingClientRect();
+        return r.bottom > 0 && r.top < innerHeight;
+      });
+      setWorldActive(!document.hidden && anyChapterVisible);
+    }
+    document.addEventListener("visibilitychange", updateWorldFromLayout);
+    addEventListener("scroll", updateWorldFromLayout, { passive: true });
+    updateWorldFromLayout();
+
     resize();
-    requestAnimationFrame(tick);
+    rafId = requestAnimationFrame(tick);
 
     railButtons.forEach((btn) => {
       btn.addEventListener("click", () => {
@@ -837,23 +978,84 @@
       });
     });
 
-    /* Mobile nav — checklist-design-ux */
+    /* modern-web-guidance: navigation-drawer + scrollspy */
     const navToggle = document.getElementById("nav-toggle");
-    const mobileNav = document.getElementById("mobile-nav");
-    navToggle?.addEventListener("click", () => {
-      const open = navToggle.getAttribute("aria-expanded") === "true";
-      navToggle.setAttribute("aria-expanded", String(!open));
-      navToggle.setAttribute("aria-label", open ? "Open menu" : "Close menu");
-      mobileNav.classList.toggle("is-open", !open);
-      mobileNav.hidden = open;
+    const navDrawer = document.getElementById("nav-drawer");
+    const navDrawerClose = document.getElementById("nav-drawer-close");
+    const openDrawer = () => {
+      if (!navDrawer?.open) navDrawer?.showModal();
+      navToggle?.setAttribute("aria-expanded", "true");
+    };
+    const closeDrawer = () => {
+      if (navDrawer?.open) navDrawer.close();
+      navToggle?.setAttribute("aria-expanded", "false");
+      navToggle?.focus();
+    };
+    navToggle?.addEventListener("click", openDrawer);
+    navDrawerClose?.addEventListener("click", closeDrawer);
+    navDrawer?.addEventListener("cancel", (e) => {
+      e.preventDefault();
+      closeDrawer();
     });
-    mobileNav?.querySelectorAll("a").forEach((a) => {
-      a.addEventListener("click", () => {
-        navToggle.setAttribute("aria-expanded", "false");
-        mobileNav.classList.remove("is-open");
-        mobileNav.hidden = true;
+    navDrawer?.addEventListener("click", (e) => {
+      if (e.target === navDrawer) closeDrawer();
+    });
+    navDrawer?.querySelectorAll("a").forEach((a) => {
+      a.addEventListener("click", closeDrawer);
+    });
+
+    const navAnchors = document.querySelectorAll(".nav-main a, .nav-drawer a[href^='#chapter']");
+    const syncAriaCurrent = () => {
+      const current = document.querySelector(".nav-main a:target-current")
+        ?? document.querySelector(".nav-main a.target-current");
+      navAnchors.forEach((link) => {
+        const isMain = link.closest(".nav-main");
+        const active = current ? link === current : link.getAttribute("href") === "#chapter-0";
+        if (isMain) {
+          link.setAttribute("aria-current", active ? "true" : "false");
+        }
       });
-    });
+    };
+
+    if (CSS.supports("scroll-target-group", "auto")) {
+      syncAriaCurrent();
+      document.addEventListener("scrollend", syncAriaCurrent);
+    } else {
+      const spySections = document.querySelectorAll("main .chapter[id]");
+      const spyObserver = new IntersectionObserver((entries) => {
+        entries.forEach((entry) => {
+          if (!entry.isIntersecting) return;
+          const id = entry.target.id;
+          document.querySelectorAll(".nav-main a").forEach((link) => {
+            const isActive = link.getAttribute("href") === `#${id}`;
+            link.classList.toggle("target-current", isActive);
+            link.setAttribute("aria-current", isActive ? "true" : "false");
+          });
+        });
+      }, { rootMargin: "-45% 0px -45% 0px", threshold: 0 });
+      spySections.forEach((section) => spyObserver.observe(section));
+    }
+
+    const scrollProgress = document.getElementById("scroll-progress");
+    if (scrollProgress && !CSS.supports("animation-timeline", "scroll()")) {
+      const onScrollProgress = () => {
+        const scrollable = document.documentElement.scrollHeight - innerHeight;
+        const progress = scrollable > 0 ? scrollY / scrollable : 0;
+        scrollProgress.style.transform = `scaleX(${progress})`;
+      };
+      addEventListener("scroll", onScrollProgress, { passive: true });
+      onScrollProgress();
+    }
+
+    const headerEl = document.querySelector(".site-header");
+    if (
+      headerEl
+      && !CSS.supports("(animation-timeline: scroll()) and (animation-range: 0% 100%)")
+    ) {
+      addEventListener("scroll", () => {
+        headerEl.classList.toggle("is-scrolled", scrollY > 24);
+      }, { passive: true });
+    }
 
     /* Yield form */
     const yieldForm = document.getElementById("yield-form");
