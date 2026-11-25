@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Hearthstone Capital — Property investment demo</title>
   <meta name="description" content="Demo: design-taste-frontend, button-interactions, checklist-design-ux, scroll-3d-worlds on a property investment template." />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -59,6 +59,10 @@
       line-height: 1.55;
       color: var(--ink);
       background: var(--bg);
+      font-size-adjust: from-font;
+    }
+    h1, h2, h3, .logo {
+      font-size-adjust: from-font;
     }
 
     .skip-link {
@@ -146,12 +150,21 @@
       @supports ((animation-timeline: scroll()) and (animation-range: 0% 100%)) {
         @keyframes mwg-header-compact {
           to {
-            min-height: var(--nav-h-compact);
-            --header-shadow: 0 10px 28px rgb(20 32 28 / 0.1);
+            box-shadow: 0 10px 28px rgb(20 32 28 / 0.1);
+          }
+        }
+        @keyframes mwg-header-inner-compact {
+          to {
+            padding-block: 0.35rem;
           }
         }
         .site-header {
           animation: mwg-header-compact auto linear forwards;
+          animation-timeline: scroll(block root);
+          animation-range: 0 140px;
+        }
+        .site-header__inner {
+          animation: mwg-header-inner-compact auto linear forwards;
           animation-timeline: scroll(block root);
           animation-range: 0 140px;
         }
@@ -177,13 +190,16 @@
     }
     .logo span { color: var(--accent-bright); }
 
-    .nav-main {
+    .nav-main-wrap {
       display: none;
+      flex: 1;
+    }
+    .nav-main {
       list-style: none;
       margin: 0;
       padding: 0;
       gap: 1.75rem;
-      flex: 1;
+      display: flex;
       scroll-target-group: auto;
     }
     .nav-main a {
@@ -237,8 +253,13 @@
       display: flex;
       justify-content: flex-end;
     }
+    .nav-drawer:modal {
+      overscroll-behavior: contain;
+    }
     .nav-drawer::backdrop {
       background: rgb(20 32 28 / 0.45);
+      overflow: hidden;
+      overscroll-behavior: contain;
     }
   .nav-drawer__sheet {
       margin: 0;
@@ -279,7 +300,7 @@
     }
 
     @media (min-width: 768px) {
-      .nav-main { display: flex; }
+      .nav-main-wrap { display: block; }
       .nav-toggle { display: none; }
     }
 
@@ -383,6 +404,9 @@
       border-top-color: var(--btn-muted);
     }
     @keyframes btn-spin { to { transform: rotate(360deg); } }
+    @media (prefers-reduced-motion: reduce) {
+      .btn__spinner { animation: none; border-top-color: currentColor; }
+    }
 
     /* Scroll chapters (scroll-3d-worlds DOM layer) */
     .chapter {
@@ -393,7 +417,7 @@
     }
     .chapter[data-defer] {
       content-visibility: auto;
-      contain-intrinsic-size: auto 100vh;
+      contain-intrinsic-size: auto none auto 100vh;
     }
     @media (prefers-reduced-motion: no-preference) {
       @supports ((animation-timeline: view()) and (animation-range: entry)) {
@@ -636,12 +660,14 @@
     <header class="site-header">
       <div class="site-header__inner">
         <a class="logo" href="#">Hearthstone <span>Capital</span></a>
-        <ul class="nav-main" role="list">
-          <li><a href="#chapter-0">Approach</a></li>
-          <li><a href="#chapter-1">Portfolio</a></li>
-          <li><a href="#chapter-2">Returns</a></li>
-          <li><a href="#chapter-3">Invest</a></li>
-        </ul>
+        <nav class="nav-main-wrap" aria-label="Primary">
+          <ul class="nav-main" role="list">
+            <li><a href="#chapter-0">Approach</a></li>
+            <li><a href="#chapter-1">Portfolio</a></li>
+            <li><a href="#chapter-2">Returns</a></li>
+            <li><a href="#chapter-3">Invest</a></li>
+          </ul>
+        </nav>
         <div class="header-actions">
           <button type="button" class="btn btn--ghost" id="btn-brochure">Download brochure</button>
           <button type="button" class="btn btn--primary" id="btn-header-cta">Book a call</button>
@@ -775,7 +801,7 @@
 
     <footer class="site-footer">
       <div class="site-footer__inner">
-        <p>Demo only — not financial advice. Illustrates your four design skills + modern-web-guidance.</p>
+        <p>Demo only — not financial advice. Skills stack + MWG audit (2026_11_16).</p>
         <p>Live: <code>odwamanitshana.github.io/design-skills-demo/</code></p>
       </div>
     </footer>
@@ -786,6 +812,21 @@
   </script>
   <script type="module">
     import * as THREE from "three";
+
+    /* modern-web-guidance: defer-work-until-scroll-ends (scrollend polyfill) */
+    if (!("onscrollend" in window)) {
+      let scrollEndTimer = 0;
+      window.addEventListener(
+        "scroll",
+        () => {
+          clearTimeout(scrollEndTimer);
+          scrollEndTimer = window.setTimeout(() => {
+            window.dispatchEvent(new Event("scrollend"));
+          }, 120);
+        },
+        { passive: true, capture: true }
+      );
+    }
 
     const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
@@ -924,7 +965,7 @@
       setWorldActive(!document.hidden && anyChapterVisible);
     }
     document.addEventListener("visibilitychange", updateWorldFromLayout);
-    addEventListener("scroll", updateWorldFromLayout, { passive: true });
+    addEventListener("scrollend", updateWorldFromLayout, { passive: true });
     updateWorldFromLayout();
 
     resize();
@@ -1019,9 +1060,18 @@
       });
     };
 
+    const onScrollSpySettle = () => {
+      if (CSS.supports("scroll-target-group", "auto")) {
+        syncAriaCurrent();
+      }
+      const idx = Math.round(progressFromScroll());
+      railButtons.forEach((btn, i) => {
+        btn.setAttribute("aria-current", i === idx ? "true" : "false");
+      });
+    };
+
     if (CSS.supports("scroll-target-group", "auto")) {
       syncAriaCurrent();
-      document.addEventListener("scrollend", syncAriaCurrent);
     } else {
       const spySections = document.querySelectorAll("main .chapter[id]");
       const spyObserver = new IntersectionObserver((entries) => {
@@ -1037,16 +1087,17 @@
       }, { rootMargin: "-45% 0px -45% 0px", threshold: 0 });
       spySections.forEach((section) => spyObserver.observe(section));
     }
+    document.addEventListener("scrollend", onScrollSpySettle);
 
     const scrollProgress = document.getElementById("scroll-progress");
     if (scrollProgress && !CSS.supports("animation-timeline", "scroll()")) {
-      const onScrollProgress = () => {
+      const paintScrollProgress = () => {
         const scrollable = document.documentElement.scrollHeight - innerHeight;
         const progress = scrollable > 0 ? scrollY / scrollable : 0;
         scrollProgress.style.transform = `scaleX(${progress})`;
       };
-      addEventListener("scroll", onScrollProgress, { passive: true });
-      onScrollProgress();
+      addEventListener("scrollend", paintScrollProgress, { passive: true });
+      paintScrollProgress();
     }
 
     const headerEl = document.querySelector(".site-header");
